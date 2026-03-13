@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hover Loop Carousel - Editable</title>
+<style>
+:root {
+    --bg-color: #ffffff;
+    --text-color: #212529;
+    --secondary-gray: #6c757d; 
+}
+body {
+    font-family: 'Trebuchet MS';
+    background-color: var(--bg-color);
+    margin: 0;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* --- INSTRUCTION OVERLAY STYLES --- */
+#instruction-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.95);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    transition: opacity 0.5s ease, visibility 0.5s;
+}
+
+#instruction-content {
+    max-width: 450px;
+    text-align: center;
+    padding: 40px;
+}
+
+#instruction-content h2 {
+    font-size: 2rem;
+    margin-bottom: 15px;
+    color: var(--text-color);
+}
+
+#instruction-content p {
+    color: var(--secondary-gray);
+    line-height: 1.6;
+    margin-bottom: 30px;
+}
+
+.start-btn {
+    padding: 12px 30px;
+    background-color: var(--text-color);
+    color: white;
+    border: none;
+    border-radius: 30px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.start-btn:hover {
+    transform: scale(1.05);
+}
+
+/* --- TEXT DISPLAY & EDITABLE AREA --- */
+#text-display {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-size: clamp(2rem, 10vw, 6rem);
+    font-weight: 800;
+    color: var(--text-color);
+    transition: all 0.5s ease;
+    padding-bottom: 20vh; 
+    text-align: center;
+    position: relative;
+}
+
+#main-container {
+    outline: none;
+    display: inline-block;
+    min-width: 50px;
+    padding: 10px;
+}
+
+#main-container.placeholder {
+    color: #ced4da;
+}
+
+.dyslexia-span {
+    display: inline-block;
+}
+
+/* --- DESCRIPTION BACKGROUND --- */
+#description-container {
+    display: none;
+    position: absolute;
+    bottom: 100%; 
+    left: 50%;
+    transform: translateX(-50%);
+    width: 90%;
+    max-width: 650px;
+    font-size: 1.1rem;
+    font-weight: 500;
+    padding: 10px 20px 30px 20px;
+    color: #495057;
+    text-align: center;
+    z-index: 5;
+    line-height: 1.5;
+    transition: background 0.4s ease;
+}
+
+#description-container.active-description {
+    background-color: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(5px);
+    border-radius: 12px;
+    padding: 20px 25px 40px 25px;
+}
+
+.fade-in {
+    animation: fadeInScale 0.4s ease-out forwards;
+}
+
+@keyframes fadeInScale {
+    from { opacity: 0; transform: translate(-50%, 10px); }
+    to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+#learn-more-btn {
+    display: none;
+    position: absolute;
+    top: -15px; 
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 5px 10px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.05rem;
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    color: var(--secondary-gray);
+    transition: color 0.3s, opacity 0.4s ease;
+    align-items: center;
+    gap: 6px;
+    z-index: 10;
+    opacity: 0; 
+    margin-top: 10px; 
+}
+
+#learn-more-btn.visible {
+    display: flex;
+    opacity: 1;
+}
+
+#learn-more-btn::after {
+    content: '';
+    width: 0; height: 0; 
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-bottom: 5px solid var(--secondary-gray);
+    transition: transform 0.3s ease;
+}
+
+#learn-more-btn:hover { color: var(--text-color); }
+#learn-more-btn.active::after { transform: rotate(180deg); }
+
+.text-container {
+    position: relative;
+    display: inline-block;
+}
+
+.crowd-item {
+    position: absolute;
+    color: var(--text-color);
+    font-weight: 800;
+    pointer-events: none;
+    z-index: -1;
+    font-size: 1em; 
+    opacity: 1;
+    line-height: 1;
+    white-space: nowrap;
+}
+
+.controls-dock {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background: transparent; 
+    padding: 40px 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 25px;
+    z-index: 20;
+}
+
+.carousel-wrapper {
+    width: 100%;
+    overflow-x: scroll;
+    scrollbar-width: none;
+    cursor: grab;
+    mask-image: linear-gradient(to right, transparent, black 20%, black 80%, transparent);
+    -webkit-mask-image: linear-gradient(to right, transparent, black 20%, black 80%, transparent);
+}
+
+.carousel-wrapper::-webkit-scrollbar { display: none; }
+.carousel { 
+    display: flex; 
+    width: max-content; 
+    gap: 15px; 
+    padding: 20px 0;
+}
+
+.filter-btn, .reset-btn {
+    padding: 12px 25px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    border: none;
+    border-radius: 8px;
+    font-weight: 700;
+    text-transform: uppercase;
+    transition: transform 0.2s, opacity 0.2s, color 0.2s;
+    white-space: nowrap;
+}
+
+.filter-btn { 
+    color: white; 
+    width: calc(33.33vw - 20px);
+    box-sizing: border-box;
+}
+
+.reset-btn {
+    background-color: transparent;
+    color: var(--secondary-gray);
+    letter-spacing: 0.05rem;
+}
+
+.reset-btn:hover {
+    color: var(--text-color);
+    text-decoration: underline;
+    text-underline-offset: 5px;
+    transform: translateY(-1px);
+}
+</style>
+</head>
+<body>
+
+<div id="instruction-overlay">
+    <div id="instruction-content">
+        <h2>Hello!</h2>
+        <p>Type your own words and explore how different conditions change the way we read. Scroll through and pick a reading condition to transform the text.</p>
+        <button class="start-btn" onclick="closeInstructions()">GET STARTED</button>
+    </div>
+</div>
+
+<div id="text-display">
+    <div class="text-container">
+        <span id="main-container" class="placeholder" contenteditable="true" spellcheck="false">type here...</span>
+    </div>
+</div>
+
+<div class="controls-dock">
+    <div id="description-container">Select a condition to learn more.</div>
+    <button id="learn-more-btn" onclick="toggleDescription()">LEARN MORE</button>
+    
+    <div class="carousel-wrapper" id="wrapper">
+        <div class="carousel" id="carousel-content"></div>
+    </div>
+    <button class="reset-btn" onclick="applyFilter('none', 'none', false, false, false, true)">RESET</button>
+</div>
+
+<script>
+const wrapper = document.getElementById('wrapper');
+const carousel = document.getElementById('carousel-content');
+const textDisplay = document.getElementById('text-display');
+const mainContainer = document.getElementById('main-container');
+const learnMoreBtn = document.getElementById('learn-more-btn');
+const descContainer = document.getElementById('description-container');
+
+let currentFilterState = {
+    isGrapheme: false,
+    isCrowded: false,
+    isDyslexic: false
+};
+
+const graphemeMap = {
+    'a': '#FF9EE4', 'b': '#3735C4', 'c': '#6AC267', 'd': '#346E3B', 'e': '#DBDBDB',
+    'f': '#FFAE00', 'g': '#AD1728', 'h': '#0DB7DE', 'i': '#FFFFFF', 'j': '#FFA100',
+    'k': '#A671E3', 'l': '#506351', 'm': '#785796', 'n': '#990F0F', 'o': '#000000',
+    'p': '#FFE100', 'q': '#2A17BF', 'r': '#8A3322', 's': '#EDA313', 't': '#FFEA00',
+    'u': '#0097DB', 'v': '#F5B25F', 'w': '#1B3AAB', 'x': '#67AD4B', 'y': '#FFFFFF', 'z': '#852A2A',
+    ' ': 'transparent'
+};
+
+const filters = [
+    { name: 'Visual Stress', shadow: '5px -10px 0px #000, -5px 10px 0px rgba(0,0,0,0.5)', color: '#1D4ED8', desc: 'Visual Stress can make letters appear to vibrate, blur, or have "rivers" of white space running through the text.' },
+    { name: 'Dyslexia', filter: 'grayscale(100%)', color: '#d81b60', isDyslexic: true, desc: 'Dyslexia can cause letters to swap, flip, or rotate, making the decoding process much slower and visually confusing.' },
+    { name: 'Grapheme Color', color: '#00695C', isGrapheme: true, desc: 'Grapheme-color synesthesia associates specific letters or numbers with specific colors.' },
+    { name: 'Palinopsia', shadow: '-20px 0px 0px #000, -40px 0px 0px #444, -60px 0px 0px #888', color: '#A15C00', desc: 'Palinopsia causes visual "after-images" where the image of a word persists even after looking away.' },
+    { name: 'Visual Crowding', color: '#7B1FA2', isCrowded: true, desc: 'Visual Crowding makes it difficult to recognize letters when they are surrounded by other distracting information.' }
+];
+
+function closeInstructions() {
+    const overlay = document.getElementById('instruction-overlay');
+    overlay.style.opacity = '0';
+    setTimeout(() => { overlay.style.visibility = 'hidden'; }, 500);
+}
+
+mainContainer.addEventListener('focus', () => {
+    if (mainContainer.innerText === 'type here...') {
+        mainContainer.innerText = '';
+        mainContainer.classList.remove('placeholder');
+    }
+});
+
+mainContainer.addEventListener('blur', () => {
+    if (mainContainer.innerText.trim() === '') {
+        mainContainer.innerText = 'type here...';
+        mainContainer.classList.add('placeholder');
+    }
+});
+
+function setupCarousel() {
+    const items = [...filters, ...filters, ...filters];
+    items.forEach(f => {
+        const btn = document.createElement('button');
+        btn.className = 'filter-btn';
+        btn.style.backgroundColor = f.color;
+        btn.innerText = f.name;
+        btn.onclick = () => applyFilter(f.filter || 'none', f.shadow || 'none', f.isGrapheme, f.isCrowded, f.isDyslexic, false, f.desc);
+        carousel.appendChild(btn);
+    });
+    
+    setTimeout(() => {
+        const sectionWidth = carousel.scrollWidth / 3;
+        wrapper.scrollLeft = sectionWidth;
+        updateOpacity();
+    }, 10);
+}
+
+function renderSpecialText() {
+    const text = mainContainer.innerText;
+    if (text === 'type here...') return;
+
+    mainContainer.innerHTML = '';
+    text.split('').forEach((char) => {
+        const span = document.createElement('span');
+        span.innerText = char;
+        
+        if (currentFilterState.isGrapheme) {
+            const color = graphemeMap[char.toLowerCase()] || 'var(--text-color)';
+            span.style.color = color;
+            // Apply subtle stroke to all letters in Grapheme mode
+            if (char !== ' ') {
+                span.style.webkitTextStroke = '1px rgba(0,0,0,0.15)';
+            }
+        }
+        
+        if (currentFilterState.isDyslexic && char !== ' ' && Math.random() < 0.33) {
+            span.classList.add('dyslexia-span');
+            const axis = Math.random() > 0.5 ? 'scaleX(-1)' : 'scaleY(-1)';
+            span.style.transform = axis;
+        }
+        
+        mainContainer.appendChild(span);
+    });
+    placeCaretAtEnd(mainContainer);
+}
+
+function placeCaretAtEnd(el) {
+    el.focus();
+    if (typeof window.getSelection != "undefined" && typeof document.createRange != "undefined") {
+        var range = document.createRange();
+        range.selectNodeContents(el);
+        range.collapse(false);
+        var sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+    }
+}
+
+mainContainer.addEventListener('input', () => {
+    mainContainer.classList.remove('placeholder');
+    if (currentFilterState.isGrapheme || currentFilterState.isDyslexic) {
+        renderSpecialText();
+    }
+    if (currentFilterState.isCrowded) {
+        applyCrowding();
+    }
+});
+
+function applyFilter(filterVal, shadowVal, isGrapheme = false, isCrowded = false, isDyslexic = false, isReset = false, descText = "") {
+    currentFilterState = { isGrapheme, isCrowded, isDyslexic };
+    
+    textDisplay.style.filter = filterVal;
+    textDisplay.style.textShadow = shadowVal;
+    descContainer.style.display = 'none';
+    descContainer.classList.remove('fade-in', 'active-description');
+    descContainer.innerText = descText;
+    
+    if (isReset) {
+        learnMoreBtn.classList.remove('visible');
+        setTimeout(() => { if(!learnMoreBtn.classList.contains('visible')) learnMoreBtn.style.display = 'none'; }, 400);
+        mainContainer.style.color = 'var(--text-color)';
+        mainContainer.innerHTML = mainContainer.innerText;
+    } else {
+        learnMoreBtn.style.display = 'flex';
+        requestAnimationFrame(() => learnMoreBtn.classList.add('visible'));
+    }
+
+    learnMoreBtn.childNodes[0].textContent = "LEARN MORE ";
+    learnMoreBtn.classList.remove('active');
+
+    const oldItems = document.querySelectorAll('.crowd-item');
+    oldItems.forEach(item => item.remove());
+    
+    if (isGrapheme || isDyslexic) {
+        renderSpecialText();
+    } else if (!isReset) {
+        mainContainer.innerHTML = mainContainer.innerText;
+        mainContainer.style.color = 'var(--text-color)';
+        // Reset stroke when not in Grapheme mode
+        mainContainer.style.webkitTextStroke = 'unset';
+    }
+
+    if (isCrowded) {
+        applyCrowding();
+    }
+}
+
+function applyCrowding() {
+    const oldItems = document.querySelectorAll('.crowd-item');
+    oldItems.forEach(item => item.remove());
+    if (mainContainer.innerText === 'type here...') return;
+
+    const letters = "HKZ8NOMWxbqpndg";
+    const layout = [
+        { left: '-0.5em', top: '-1em' }, { left: '20%', top: '-1em' }, { left: '45%', top: '-1em' }, { left: '70%', top: '-1em' }, { left: '95%', top: '-1em' },
+        { left: '-1.1em', top: '0' }, { left: '105%', top: '0' },
+        { left: '-0.5em', top: '1em' }, { left: '20%', top: '1em' }, { left: '45%', top: '1em' }, { left: '70%', top: '1em' }, { left: '95%', top: '1em' }
+    ];
+    layout.forEach(pos => {
+        const span = document.createElement('span');
+        span.className = 'crowd-item';
+        span.innerText = letters.charAt(Math.floor(Math.random() * letters.length));
+        span.style.left = pos.left; span.style.top = pos.top;
+        mainContainer.appendChild(span);
+    });
+}
+
+function updateOpacity() {
+    const btns = document.querySelectorAll('.filter-btn');
+    const centerX = wrapper.offsetWidth / 2;
+    btns.forEach(btn => {
+        const rect = btn.getBoundingClientRect();
+        const btnCenter = rect.left + rect.width / 2;
+        const distanceFromCenter = Math.abs(centerX - btnCenter);
+        btn.style.opacity = Math.max(0.4, 1 - (distanceFromCenter / (wrapper.offsetWidth / 2)));
+        btn.style.transform = `scale(${Math.max(0.85, 1 - (distanceFromCenter / 1500))})`;
+    });
+}
+
+wrapper.addEventListener('scroll', () => {
+    updateOpacity();
+    const sectionWidth = carousel.scrollWidth / 3;
+    if (wrapper.scrollLeft <= 0) wrapper.scrollLeft = sectionWidth;
+    else if (wrapper.scrollLeft >= sectionWidth * 2) wrapper.scrollLeft = sectionWidth;
+});
+
+function toggleDescription() {
+    const isVisible = descContainer.style.display === 'block';
+    if (isVisible) {
+        descContainer.style.display = 'none';
+        descContainer.classList.remove('fade-in', 'active-description');
+        learnMoreBtn.childNodes[0].textContent = "LEARN MORE ";
+        learnMoreBtn.classList.remove('active');
+    } else {
+        descContainer.style.display = 'block';
+        descContainer.classList.add('fade-in', 'active-description');
+        learnMoreBtn.childNodes[0].textContent = "HIDE ";
+        learnMoreBtn.classList.add('active');
+    }
+}
+
+let isDown = false, startX, sLeft;
+wrapper.addEventListener('mousedown', (e) => {
+    isDown = true;
+    startX = e.pageX - wrapper.offsetLeft;
+    sLeft = wrapper.scrollLeft;
+});
+wrapper.addEventListener('mouseleave', () => isDown = false);
+wrapper.addEventListener('mouseup', () => isDown = false);
+wrapper.addEventListener('mousemove', (e) => {
+    if (!isDown) return;
+    e.preventDefault();
+    const x = e.pageX - wrapper.offsetLeft;
+    wrapper.scrollLeft = sLeft - (x - startX) * 2;
+});
+
+setupCarousel();
+</script>
+</body>
+</html>
